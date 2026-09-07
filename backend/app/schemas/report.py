@@ -12,6 +12,8 @@ class LabResultOut(BaseModel):
     test_name_normalized: str
     value_numeric: Optional[float] = None
     value_text: Optional[str] = None
+    value_numeric_original: Optional[float] = None
+    value_text_original: Optional[str] = None
     unit: Optional[str] = None
     reference_low: Optional[float] = None
     reference_high: Optional[float] = None
@@ -19,6 +21,9 @@ class LabResultOut(BaseModel):
     raw_text: str
     confidence: str
     data_quality: str
+    critical: bool = False
+    correction_note: Optional[str] = None
+    corrected_at: Optional[datetime] = None
 
 
 class ReportSummary(BaseModel):
@@ -53,3 +58,9 @@ class UploadResponse(BaseModel):
     status: str
     report_date: Optional[date] = None
     tests_extracted: int = 0
+
+
+class CorrectionRequest(BaseModel):
+    value_numeric: Optional[float] = None
+    value_text: Optional[str] = None
+    reason: str = "User correction"

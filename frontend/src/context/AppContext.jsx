@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
-import { getReport, listReports, normalizeReport, uploadReport } from "../api/client";
+import { correctResult, getReport, listReports, normalizeReport, uploadReport } from "../api/client";
 
 const AppContext = createContext(null);
 
@@ -48,6 +48,7 @@ export function AppProvider({ children }) {
     error,
     refreshReports,
     uploadReport,
+    correctResult,
     getReport: fetchReport,
   };
 

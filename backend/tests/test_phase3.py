@@ -179,6 +179,11 @@ def test_report_api_list_detail_results_filter_and_not_found():
     missing = client.get("/api/reports/999")
     assert missing.status_code == 404
     assert missing.json() == {"error": {"code": "REPORT_NOT_FOUND", "message": "We couldn't find that report."}}
+    corrected = client.patch(f"/api/reports/{report.id}/results/{report.results[0].id}", json={"value_numeric": 6.1, "reason": "Checked against source document"})
+    assert corrected.status_code == 200
+    assert corrected.json()["value_numeric"] == 6.1
+    assert corrected.json()["value_numeric_original"] == 5.9
+    assert corrected.json()["correction_note"] == "Checked against source document"
 
 
 def test_duplicate_content_hash_is_rejected_before_processing():

@@ -19,6 +19,7 @@ class ParserResult(BaseModel):
     raw_text: str = Field(default="")
     confidence: str = Field(default="medium")
     data_quality: str = Field(default="good")
+    critical: bool = False
 
 
 class ExtractionOutput(BaseModel):

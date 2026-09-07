@@ -14,6 +14,10 @@ def _has_reference_range(ref: Optional[ReferenceRange]) -> bool:
 
 def _assign_quality(result: ParserResult) -> None:
     """Deterministically derive data_quality and confidence from available fields."""
+    if result.critical:
+        result.data_quality = "critical"
+        result.confidence = "high" if result.value_numeric is not None or result.value_text else "low"
+        return
     if result.data_quality == "ambiguous_value":
         result.confidence = "low"
         return

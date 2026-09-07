@@ -37,3 +37,12 @@ export function normalizeReport(report) {
 export function getTrends() {
   return request("/api/trends");
 }
+
+export function correctResult(reportId, resultId, value, reason) {
+  const numeric = Number(value);
+  return request(`/api/reports/${reportId}/results/${resultId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ value_numeric: Number.isNaN(numeric) ? null : numeric, value_text: Number.isNaN(numeric) ? value : null, reason }),
+  });
+}

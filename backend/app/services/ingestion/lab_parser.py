@@ -65,6 +65,7 @@ class DeterministicParser:
 
     @staticmethod
     def _parse_lab_line(line: str) -> ParserResult | None:
+        critical = bool(re.search(r"\bCRITICAL\b", line, re.IGNORECASE))
         line = SPECIAL_MARKERS.sub("", line).strip()
         if not line:
             return None
@@ -147,6 +148,7 @@ class DeterministicParser:
             raw_text=line,
             confidence="low" if ambiguous else "medium",
             data_quality="ambiguous_value" if ambiguous else ("good" if parsed_value is not None else "unreadable"),
+            critical=critical,
         )
 
     def parse(self, raw_text: str) -> ExtractionOutput:
@@ -184,6 +186,7 @@ class DeterministicParser:
                         raw_text="\n".join(lines[index:index + 4]),
                         confidence="medium",
                         data_quality="good",
+                        critical=bool(re.search(r"\bCRITICAL\b", line, re.IGNORECASE)),
                     ))
                     index += 4
                     continue
@@ -221,4 +224,9 @@ def build_parser(settings: Settings) -> object:
 
 def parse_raw_text(raw_text: str, settings: Settings) -> ExtractionOutput:
     parser = build_parser(settings)
-    return parser.parse(raw_text)
+    try:
+        return parser.parse(raw_text)
+    except ParserError:
+        if settings.EXTRACTION_MODE != "auto" or isinstance(parser, DeterministicParser):
+            raise
+        return DeterministicParser().parse(raw_text)

@@ -67,3 +67,9 @@ class DuplicateReportError(LabLensError):
     code = "DUPLICATE_REPORT"
     status_code = 409
     message = "This report has already been uploaded."
+
+
+class InvalidCorrectionError(LabLensError):
+    code = "INVALID_CORRECTION"
+    status_code = 422
+    message = "Enter a numeric or text value for the correction."

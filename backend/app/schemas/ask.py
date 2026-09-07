@@ -21,3 +21,6 @@ class AskResponse(BaseModel):
     answer: str
     citations: list[Citation] = Field(default_factory=list)
     safety_notice: str | None = None
+    tool_name: str | None = None
+    tool_arguments: dict[str, str | int | None] = Field(default_factory=dict)
+    evidence_result_ids: list[int] = Field(default_factory=list)

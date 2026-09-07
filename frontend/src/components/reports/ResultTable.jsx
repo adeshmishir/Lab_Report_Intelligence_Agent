@@ -1,6 +1,9 @@
 import { StatusBadge } from "../common/StatusBadge";
+import { useState } from "react";
 
-export function ResultTable({ results }) {
+export function ResultTable({ results, onCorrect }) {
+  const [editingId, setEditingId] = useState(null);
+  const [value, setValue] = useState("");
   const qualityDetails = {
     missing_value: "A value was not provided or could not be read.",
     missing_unit: "The report did not include a unit.",
@@ -20,6 +23,7 @@ export function ResultTable({ results }) {
             <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Unit</th>
             <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider hidden md:table-cell">Reference range</th>
             <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Status</th>
+            {onCorrect && <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Review</th>}
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-50">
@@ -42,6 +46,14 @@ export function ResultTable({ results }) {
               <td className="px-6 py-3.5" title={qualityDetails[result.data_quality || result.status] || undefined}>
                 <StatusBadge status={result.data_quality || result.status} />
               </td>
+              {onCorrect && <td className="px-6 py-3.5">
+                {editingId === result.id ? (
+                  <form className="flex items-center gap-1" onSubmit={(event) => { event.preventDefault(); onCorrect(result.id, value); setEditingId(null); }}>
+                    <input autoFocus value={value} onChange={(event) => setValue(event.target.value)} className="w-20 rounded border border-slate-200 px-2 py-1 text-xs" aria-label={`Correct ${result.test_name_normalized}`} />
+                    <button type="submit" className="text-xs font-medium text-emerald-700">Save</button>
+                  </form>
+                ) : <button type="button" onClick={() => { setEditingId(result.id); setValue(String(result.value_numeric ?? result.value_text ?? "")); }} className="text-xs font-medium text-slate-600 underline underline-offset-2">Correct</button>}
+              </td>}
             </tr>
           ))}
         </tbody>

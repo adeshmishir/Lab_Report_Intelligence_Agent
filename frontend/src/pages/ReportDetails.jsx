@@ -9,11 +9,20 @@ import { Button } from "../components/common/Button";
 
 export default function ReportDetails() {
   const { id } = useParams();
-  const { reports, getReport } = useApp();
+  const { reports, getReport, correctResult } = useApp();
   const [showRawText, setShowRawText] = useState(false);
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  const handleCorrection = async (resultId, value) => {
+    try {
+      const updated = await correctResult(Number(id), resultId, value, "Corrected from report details");
+      setReport((current) => ({ ...current, results: current.results.map((item) => item.id === resultId ? updated : item) }));
+    } catch (requestError) {
+      setError(requestError.message);
+    }
+  };
 
   useEffect(() => {
     let active = true;
@@ -81,7 +90,7 @@ export default function ReportDetails() {
       <div>
         <h2 className="text-sm font-semibold text-slate-900 mb-3">Results</h2>
         {report.results?.length ? (
-          <ResultTable results={report.results} />
+          <ResultTable results={report.results} onCorrect={handleCorrection} />
         ) : (
           <div className="rounded-xl border border-slate-200 bg-white px-6 py-10">
             <EmptyState title="No structured results were found" description="We couldn't confidently extract any lab values from this report." />

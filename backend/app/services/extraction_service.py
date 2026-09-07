@@ -76,6 +76,8 @@ class ExtractionService:
                     test_name_normalized=result.test_name_normalized,
                     value_numeric=result.value_numeric,
                     value_text=result.value_text,
+                    value_numeric_original=result.value_numeric,
+                    value_text_original=result.value_text,
                     unit=result.unit,
                     reference_low=result.reference_range.low if result.reference_range else None,
                     reference_high=result.reference_range.high if result.reference_range else None,
@@ -83,6 +85,7 @@ class ExtractionService:
                     raw_text=result.raw_text or "",
                     confidence=result.confidence or "medium",
                     data_quality=result.data_quality or "good",
+                    critical=result.critical,
                 )
             )
 
