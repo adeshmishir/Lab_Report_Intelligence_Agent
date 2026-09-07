@@ -65,7 +65,13 @@ export default function ReportDetails() {
 
       <div>
         <h2 className="text-sm font-semibold text-slate-900 mb-3">Results</h2>
-        <ResultTable results={report.results} />
+        {report.results?.length ? (
+          <ResultTable results={report.results} />
+        ) : (
+          <div className="rounded-xl border border-slate-200 bg-white px-6 py-10">
+            <EmptyState title="No structured results were found" description="We couldn't confidently extract any lab values from this report." />
+          </div>
+        )}
       </div>
 
       <div className="rounded-xl border border-slate-200 bg-white">

@@ -6,7 +6,7 @@ LLM-powered lab report intelligence agent.
 
 ## Current phase
 
-**Phase 1** — Project foundation and UI.
+**Phase 3** — Database, normalization, and data quality.
 
 ## Planned capabilities
 
@@ -75,3 +75,27 @@ CORS_ORIGINS=["http://localhost:5173"]
 - Phase 1 uses **sample/demo data only**. No real medical data is processed.
 - The application does not diagnose conditions or recommend treatments.
 - Backend functionality (OCR, extraction, LLM, embeddings) will be implemented in Phase 2.
+
+## Phase 3 architecture
+
+```text
+Upload
+	↓
+Extraction
+	↓
+Pydantic validation
+	↓
+Test-name and unit normalization
+	↓
+Reference parsing and data quality
+	↓
+PostgreSQL (Report → LabResult)
+```
+
+Reports and results are managed by Alembic migrations. Original names, raw text,
+reference text, confidence, and quality state are retained for auditability.
+Numeric and qualitative values use separate fields. Duplicate results remain
+stored; identical duplicates and conflicting values are classified deterministically.
+
+Phase 3 endpoints include `GET /api/reports`, `GET /api/reports/{report_id}`,
+and `GET /api/reports/{report_id}/results?test_name=HbA1c`.
