@@ -53,6 +53,7 @@ class ExtractionService:
 
         # 5. Persist the report and its results.
         report = Report(
+            user_id=1,
             original_filename=file.filename,
             mime_type=file.mime_type,
             report_date=report_date,

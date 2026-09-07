@@ -40,6 +40,7 @@ class Report(Base):
     __tablename__ = "reports"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
     original_filename: Mapped[str] = mapped_column(String(255), nullable=False)
     mime_type: Mapped[str] = mapped_column(String(64), nullable=False)
     report_date: Mapped[date | None] = mapped_column(Date, nullable=True)
@@ -49,6 +50,8 @@ class Report(Base):
     )
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    user: Mapped["User"] = relationship(back_populates="reports")
 
     results: Mapped[list["LabResult"]] = relationship(
         back_populates="report", cascade="all, delete-orphan", order_by="LabResult.id"

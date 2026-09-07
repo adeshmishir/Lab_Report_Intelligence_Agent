@@ -68,7 +68,7 @@ def get_report(report_id: int, db: Session = Depends(get_db)):
     )
     report = db.execute(stmt).scalar_one_or_none()
     if report is None:
-        raise NotFoundError("Report not found.")
+        raise NotFoundError()
     return ReportDetail(
         id=report.id,
         original_filename=report.original_filename,
@@ -90,7 +90,7 @@ def get_report_results(
 ):
     report = db.get(Report, report_id)
     if report is None:
-        raise NotFoundError("Report not found.")
+        raise NotFoundError()
     if test_name:
         return [result for result in report.results if result.test_name_normalized.casefold() == test_name.strip().casefold()]
     return report.results

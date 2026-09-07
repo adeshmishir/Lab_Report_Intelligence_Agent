@@ -99,3 +99,16 @@ stored; identical duplicates and conflicting values are classified deterministic
 
 Phase 3 endpoints include `GET /api/reports`, `GET /api/reports/{report_id}`,
 and `GET /api/reports/{report_id}/results?test_name=HbA1c`.
+
+### Phase 3 verification
+
+```bash
+cd backend
+python -m pytest tests -q
+cd ../frontend
+npm test
+npm run build
+```
+
+The schema includes one seeded demo user for the `User -> Report -> LabResult`
+relationship. No authentication is required in this phase.

@@ -1,8 +1,17 @@
 import sys
 from pathlib import Path
 
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
+from fastapi.testclient import TestClient
+
 sys.path.insert(0, str(Path(__file__).parents[1]))
 
+from app.core.database import Base
+from app.core.database import get_db
+from app.main import create_app
+from app.models import LabResult, Report, ReportStatus, User
 from app.schemas.extraction import ParserResult
 from app.services.ingestion.lab_parser import DeterministicParser
 from app.services.ingestion.normalization import normalize_test_name, normalize_unit
@@ -62,3 +71,105 @@ def test_qualitative_parser_value_is_not_forced_numeric():
     result = DeterministicParser().parse("Protein Positive").tests[0]
     assert result.value_numeric is None
     assert result.value_text == "Positive"
+
+
+def test_parser_supports_worded_ranges_and_spaced_units():
+    result = DeterministicParser().parse("Glucose 95 mg / dL 70 to 100").tests[0]
+    assert result.value_numeric == 95
+    assert result.unit == "mg/dL"
+    assert result.reference_range.low == 70
+    assert result.reference_range.high == 100
+
+
+def test_report_user_result_relationship_and_delete_cascade():
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+    session = sessionmaker(bind=engine)()
+    user = User(display_name="Demo User")
+    report = Report(
+        user=user,
+        original_filename="sample.pdf",
+        mime_type="application/pdf",
+        raw_text="Glucose 95 mg/dL",
+        status=ReportStatus.PROCESSED,
+    )
+    report.results.append(
+        LabResult(
+            test_name_original="Glucose",
+            test_name_normalized="Glucose",
+            value_numeric=95,
+            unit="mg/dL",
+            raw_text="Glucose 95 mg/dL",
+            confidence="high",
+            data_quality="missing_reference_range",
+        )
+    )
+    session.add(report)
+    session.commit()
+    report_id = report.id
+    result_id = report.results[0].id
+    assert session.get(Report, report_id).user.display_name == "Demo User"
+    assert session.get(LabResult, result_id).report.id == report_id
+    session.delete(session.get(Report, report_id))
+    session.commit()
+    assert session.get(LabResult, result_id) is None
+
+
+def test_report_api_list_detail_results_filter_and_not_found():
+    engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    Base.metadata.create_all(engine)
+    session_factory = sessionmaker(bind=engine)
+    session = session_factory()
+    report = Report(
+        user=User(display_name="Demo User"),
+        original_filename="panel.pdf",
+        mime_type="application/pdf",
+        raw_text="Glucose 95 mg/dL",
+        status=ReportStatus.PROCESSED,
+    )
+    report.results.extend([
+        LabResult(
+            test_name_original="A1C",
+            test_name_normalized="HbA1c",
+            value_numeric=5.9,
+            unit="%",
+            raw_text="A1C 5.9 %",
+            confidence="high",
+            data_quality="good",
+        ),
+        LabResult(
+            test_name_original="Glucose",
+            test_name_normalized="Glucose",
+            value_numeric=95,
+            unit="mg/dL",
+            raw_text="Glucose 95 mg/dL",
+            confidence="high",
+            data_quality="missing_reference_range",
+        ),
+    ])
+    session.add(report)
+    session.commit()
+
+    def override_get_db():
+        db = session_factory()
+        try:
+            yield db
+        finally:
+            db.close()
+
+    app = create_app()
+    app.dependency_overrides[get_db] = override_get_db
+    client = TestClient(app)
+    assert client.get("/api/reports").json()[0]["tests_count"] == 2
+    detail = client.get(f"/api/reports/{report.id}")
+    assert detail.status_code == 200
+    assert detail.json()["result_count"] == 2
+    filtered = client.get(f"/api/reports/{report.id}/results?test_name=HbA1c")
+    assert [item["test_name_normalized"] for item in filtered.json()] == ["HbA1c"]
+    missing = client.get("/api/reports/999")
+    assert missing.status_code == 404
+    assert missing.json() == {"error": {"code": "REPORT_NOT_FOUND", "message": "We couldn't find that report."}}

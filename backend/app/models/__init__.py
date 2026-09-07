@@ -1,3 +1,4 @@
 from app.models.report import Report, LabResult, ReportStatus, Confidence, DataQuality
+from app.models.user import User
 
-__all__ = ["Report", "LabResult", "ReportStatus", "Confidence", "DataQuality"]
+__all__ = ["User", "Report", "LabResult", "ReportStatus", "Confidence", "DataQuality"]

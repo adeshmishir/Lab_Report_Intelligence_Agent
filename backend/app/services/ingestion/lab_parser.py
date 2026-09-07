@@ -12,15 +12,15 @@ SPECIAL_MARKERS = re.compile(r"[\[\(]\s*(HIGH|H|LOW|L|OUT OF RANGE|ABNORMAL|CRIT
 
 
 def _extract_range(text: str) -> tuple[float, float, str] | None:
-    match = re.search(r"\(?(\d+(?:\.\d+)?)\s*[-–—]\s*(\d+(?:\.\d+)?)\)?", text)
+    match = re.search(r"\(?(\d+(?:[.,]\d+)?)\s*(?:[-–—]|to)\s*(\d+(?:[.,]\d+)?)\)?", text, re.IGNORECASE)
     if match:
-        return float(match.group(1)), float(match.group(2)), match.group(0)
-    match = re.search(r"<\s*(\d+(?:\.\d+)?)", text)
+        return float(match.group(1).replace(",", ".")), float(match.group(2).replace(",", ".")), match.group(0)
+    match = re.search(r"<\s*(\d+(?:[.,]\d+)?)", text)
     if match:
-        return None, float(match.group(1)), match.group(0)
-    match = re.search(r">\s*(\d+(?:\.\d+)?)", text)
+        return None, float(match.group(1).replace(",", ".")), match.group(0)
+    match = re.search(r">\s*(\d+(?:[.,]\d+)?)", text)
     if match:
-        return float(match.group(1)), None, match.group(0)
+        return float(match.group(1).replace(",", ".")), None, match.group(0)
     return None
 
 
@@ -120,7 +120,13 @@ class DeterministicParser:
 
         unit = None
         if rest:
-            candidate = re.split(r"\s+", rest)[0]
+            before_range = re.split(r"(?:\d+(?:[.,]\d+)?\s*(?:[-–—]|to)\s*\d+|<\s*\d+|>\s*\d+)", rest, maxsplit=1, flags=re.IGNORECASE)[0].strip()
+            candidate = before_range or re.split(r"\s+", rest)[0]
+            candidate = re.sub(r"\s*/\s*", "/", candidate).strip()
+            candidate = re.sub(r"^(?:ref(?:erence)?\s*:\s*)", "", candidate, flags=re.IGNORECASE).strip()
+            if candidate.lower().startswith("mg ") and "/" not in candidate and "dL" in rest:
+                candidate = "mg/dL"
+            candidate = candidate.split()[0] if " " in candidate and "/" not in candidate else candidate
             range_like = bool(re.search(r"[-–—]", candidate) and re.search(r"\d", candidate))
             range_like = range_like or candidate.startswith(("<", ">")) or bool(re.match(r"\(?\d", candidate))
             if not range_like and not re.fullmatch(r"[-+]?\d+(?:[.,]\d+)?", candidate):
