@@ -30,6 +30,7 @@ class ReportSummary(BaseModel):
     report_date: Optional[date] = None
     status: str
     tests_count: int = 0
+    attention_count: int = 0
     created_at: datetime
 
 

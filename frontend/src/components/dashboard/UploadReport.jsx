@@ -5,19 +5,22 @@ import { Button } from "../common/Button";
 const ACCEPTED = ["application/pdf", "image/jpeg", "image/png"];
 const ACCEPTED_LABELS = ["PDF", "JPG", "PNG"];
 
-export function UploadReport() {
+export function UploadReport({ onUploaded }) {
   const [state, setState] = useState("idle");
   const [dragOver, setDragOver] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const handleFile = useCallback((file) => {
     if (!file) return;
     if (!ACCEPTED.includes(file.type)) {
       setState("error");
+      setErrorMessage("Please use a PDF, JPG, or PNG file.");
       setSelectedFile(null);
       return;
     }
     setSelectedFile(file);
+    setErrorMessage("");
     setState("selected");
   }, []);
 
@@ -40,20 +43,38 @@ export function UploadReport() {
     setDragOver(false);
   }, []);
 
-  const handleUpload = useCallback(() => {
+  const handleUpload = useCallback(async () => {
     setState("uploading");
-    setTimeout(() => {
+    try {
+      await fetch("/api/reports/upload", {
+        method: "POST",
+        body: (() => {
+          const data = new FormData();
+          data.append("file", selectedFile);
+          return data;
+        })(),
+      }).then(async (response) => {
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload?.error?.message || "Upload failed.");
+        return payload;
+      });
       setState("success");
-      setTimeout(() => {
+      onUploaded?.();
+      window.setTimeout(() => {
         setState("idle");
         setSelectedFile(null);
       }, 3000);
-    }, 1500);
-  }, []);
+    } catch (error) {
+      setState("error");
+      setErrorMessage(error.message);
+      setSelectedFile(null);
+    }
+  }, [onUploaded, selectedFile]);
 
   const handleReset = useCallback(() => {
     setState("idle");
     setSelectedFile(null);
+    setErrorMessage("");
   }, []);
 
   return (
@@ -90,8 +111,8 @@ export function UploadReport() {
           ) : state === "error" ? (
             <>
               <AlertCircle className="h-8 w-8 text-red-400 mb-2" />
-              <p className="text-sm font-medium text-red-700">Unsupported file type</p>
-              <p className="text-xs text-red-500 mt-1">Please use PDF, JPG, or PNG</p>
+              <p className="text-sm font-medium text-red-700">Upload failed</p>
+              <p className="text-xs text-red-500 mt-1">{errorMessage}</p>
               <button onClick={handleReset} className="mt-3 text-xs text-red-600 underline hover:text-red-700">
                 Try again
               </button>

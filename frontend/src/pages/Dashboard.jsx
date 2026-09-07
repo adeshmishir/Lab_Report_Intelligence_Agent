@@ -12,14 +12,11 @@ function getGreeting() {
 }
 
 export default function Dashboard() {
-  const { reports } = useApp();
+  const { reports, reportsLoading, error, refreshReports } = useApp();
 
-  const attentionCount = reports.reduce(
-    (acc, r) => acc + r.results.filter((res) => res.status === "high" || res.status === "low").length,
-    0
-  );
+  const attentionCount = reports.reduce((acc, report) => acc + report.attentionCount, 0);
 
-  const totalTests = reports.reduce((acc, r) => acc + r.results.length, 0);
+  const totalTests = reports.reduce((acc, r) => acc + r.tests, 0);
 
   return (
     <div className="space-y-8">
@@ -44,7 +41,7 @@ export default function Dashboard() {
         <StatCard
           icon={Clock}
           label="Latest Report"
-          value={reports[0]?.dateFormatted || "—"}
+          value={reports[0]?.dateFormatted || "Not provided"}
           note={{ text: "Most recent report", isUp: true }}
           variant="info"
         />
@@ -66,12 +63,14 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         <div className="lg:col-span-2">
-          <UploadReport />
+          <UploadReport onUploaded={refreshReports} />
         </div>
         <div className="lg:col-span-3">
-          <RecentReports reports={reports} />
+          {reportsLoading ? <p className="text-sm text-slate-500">Loading reports...</p> : <RecentReports reports={reports} />}
         </div>
       </div>
+
+      {error && <p className="text-sm text-red-600">{error}</p>}
 
       <footer className="pt-4 border-t border-slate-100">
         <p className="text-xs text-slate-400">

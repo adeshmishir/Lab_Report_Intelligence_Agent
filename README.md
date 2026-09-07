@@ -136,3 +136,11 @@ quality states, and returns report/result citations. Without `LLM_API_KEY`, a
 deterministic answer is returned; with a key, the LLM may compose from the
 retrieved evidence only. Diagnosis, treatment, prescription, and prompt-injection
 requests receive a safety response instead of an unsupported answer.
+
+## Phase 5 architecture
+
+The dashboard, reports list, report details, upload flow, and trends page now
+read from the backend instead of demo-only state. Uploading a file refreshes
+the report list after successful persistence. `GET /api/trends` groups numeric
+values by normalized test name and preserves report dates, units, and quality
+states for the trend view.

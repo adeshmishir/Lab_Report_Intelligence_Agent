@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, File, UploadFile, Query
-from sqlalchemy import func, select
+from sqlalchemy import case, func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.config import get_settings
@@ -35,12 +35,16 @@ def upload_report(
 @router.get("", response_model=list[ReportSummary])
 def list_reports(db: Session = Depends(get_db)):
     counts = (
-        select(LabResult.report_id, func.count(LabResult.id).label("count"))
+        select(
+            LabResult.report_id,
+            func.count(LabResult.id).label("count"),
+            func.sum(case((LabResult.data_quality != "good", 1), else_=0)).label("attention_count"),
+        )
         .group_by(LabResult.report_id)
         .subquery()
     )
     stmt = (
-        select(Report, counts.c.count)
+        select(Report, counts.c.count, counts.c.attention_count)
         .outerjoin(counts, counts.c.report_id == Report.id)
         .order_by(Report.created_at.desc(), Report.id.desc())
     )
@@ -53,9 +57,10 @@ def list_reports(db: Session = Depends(get_db)):
             report_date=report.report_date,
             status=report.status.value,
             tests_count=count or 0,
+            attention_count=attention_count or 0,
             created_at=report.created_at,
         )
-        for report, count in rows
+        for report, count, attention_count in rows
     ]
 
 

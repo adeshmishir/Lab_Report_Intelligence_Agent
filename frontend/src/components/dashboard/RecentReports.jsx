@@ -18,7 +18,7 @@ export function RecentReports({ reports }) {
             <div className="flex items-center gap-4 min-w-0">
               <div className="h-9 w-9 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
                 <span className="text-xs font-semibold text-slate-500">
-                  {report.name.split(" ").map((w) => w[0]).join("")}
+                  {report.name.split(/[\s_.-]+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase()}
                 </span>
               </div>
               <div className="min-w-0">
@@ -27,7 +27,7 @@ export function RecentReports({ reports }) {
               </div>
             </div>
             <div className="flex items-center gap-4 ml-4 shrink-0">
-              <span className="text-xs text-slate-400 hidden sm:block">{report.tests} tests</span>
+              <span className="text-xs text-slate-400 hidden sm:block">{report.tests} results</span>
               <StatusBadge status={report.status} />
               <Link
                 to={`/reports/${report.id}`}

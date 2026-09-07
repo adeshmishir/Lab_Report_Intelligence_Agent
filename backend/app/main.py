@@ -6,6 +6,7 @@ from app.core.config import Settings, get_settings
 from app.core.errors import LabLensError
 from app.api.routes.reports import router as reports_router
 from app.api.routes.ask import router as ask_router
+from app.api.routes.trends import router as trends_router
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -51,6 +52,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app.include_router(reports_router)
     app.include_router(ask_router)
+    app.include_router(trends_router)
 
     return app
 

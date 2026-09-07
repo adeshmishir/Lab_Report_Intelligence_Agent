@@ -1,13 +1,23 @@
-import { useState } from "react";
-import { useApp } from "../context/AppContext";
+import { useEffect, useState } from "react";
+import { getTrends } from "../api/client";
 import { TrendChart } from "../components/trends/TrendChart";
 import { TrendSummary } from "../components/trends/TrendSummary";
 
-const TEST_OPTIONS = ["HbA1c", "Glucose", "LDL", "Hemoglobin"];
-
 export default function Trends() {
-  const { trendData } = useApp();
-  const [selectedTest, setSelectedTest] = useState("HbA1c");
+  const [trendData, setTrendData] = useState({});
+  const [selectedTest, setSelectedTest] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    getTrends()
+      .then((payload) => {
+        setTrendData(payload.data || {});
+        setSelectedTest((current) => current || payload.tests?.[0] || "");
+      })
+      .catch((requestError) => setError(requestError.message))
+      .finally(() => setLoading(false));
+  }, []);
 
   const data = trendData[selectedTest] || [];
 
@@ -20,7 +30,7 @@ export default function Trends() {
         </p>
       </div>
 
-      <div className="flex items-center gap-3">
+      {loading ? <p className="text-sm text-slate-500">Loading trends...</p> : error ? <p className="text-sm text-red-600">{error}</p> : Object.keys(trendData).length === 0 ? <p className="text-sm text-slate-500">No numeric results are available for trend analysis yet.</p> : <div className="flex items-center gap-3">
         <label htmlFor="test-select" className="text-sm text-slate-500">
           Test
         </label>
@@ -30,19 +40,19 @@ export default function Trends() {
           onChange={(e) => setSelectedTest(e.target.value)}
           className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900"
         >
-          {TEST_OPTIONS.map((test) => (
+          {Object.keys(trendData).map((test) => (
             <option key={test} value={test}>
               {test}
             </option>
           ))}
         </select>
-      </div>
+      </div>}
 
       <TrendChart data={data} testName={selectedTest} />
 
       <TrendSummary testName={selectedTest} data={data} />
 
-      <p className="text-xs text-slate-400">Sample/demo values shown above.</p>
+      <p className="text-xs text-slate-400">Values are read from processed reports in your workspace.</p>
     </div>
   );
 }

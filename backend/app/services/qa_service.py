@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from datetime import date
+import re
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -65,7 +66,7 @@ class RetrievalService:
             if name.casefold() in lowered:
                 return name
             aliases = [alias for alias, canonical in ALIASES.items() if canonical.casefold() == name.casefold()]
-            if any(alias.casefold() in lowered for alias in aliases):
+            if any(re.search(rf"(?<![a-z0-9]){re.escape(alias.casefold())}(?![a-z0-9])", lowered) for alias in aliases):
                 return name
         return None
 

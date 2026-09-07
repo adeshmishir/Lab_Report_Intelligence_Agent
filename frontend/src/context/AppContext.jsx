@@ -1,14 +1,35 @@
-import { createContext, useContext, useState } from "react";
-import { demoReports, demoTrendData } from "../data/demoData";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { getReport, listReports, normalizeReport, uploadReport } from "../api/client";
 
 const AppContext = createContext(null);
 
 export function AppProvider({ children }) {
-  const [reports] = useState(demoReports);
-  const [trendData] = useState(demoTrendData);
+  const [reports, setReports] = useState([]);
+  const [trendData] = useState({});
   const [chatMessages, setChatMessages] = useState([]);
   const [selectedReport, setSelectedReport] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [reportsLoading, setReportsLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const refreshReports = useCallback(async () => {
+    setReportsLoading(true);
+    try {
+      const payload = await listReports();
+      setReports(payload.map(normalizeReport));
+      setError(null);
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setReportsLoading(false);
+    }
+  }, []);
+
+  const fetchReport = useCallback(async (reportId) => normalizeReport(await getReport(reportId)), []);
+
+  useEffect(() => {
+    refreshReports();
+  }, []);
 
   const addChatMessage = (message) => {
     setChatMessages((prev) => [...prev, message]);
@@ -23,6 +44,11 @@ export function AppProvider({ children }) {
     setSelectedReport,
     setLoading,
     addChatMessage,
+    reportsLoading,
+    error,
+    refreshReports,
+    uploadReport,
+    getReport: fetchReport,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

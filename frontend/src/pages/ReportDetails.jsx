@@ -1,5 +1,5 @@
 import { useParams, Link } from "react-router-dom";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { ArrowLeft, FileText, ChevronDown, ChevronUp } from "lucide-react";
 import { useApp } from "../context/AppContext";
 import { StatusBadge } from "../components/common/StatusBadge";
@@ -9,12 +9,27 @@ import { Button } from "../components/common/Button";
 
 export default function ReportDetails() {
   const { id } = useParams();
-  const { reports } = useApp();
+  const { reports, getReport } = useApp();
   const [showRawText, setShowRawText] = useState(false);
+  const [report, setReport] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  const report = reports.find((r) => r.id === Number(id));
+  useEffect(() => {
+    let active = true;
+    setLoading(true);
+    getReport(Number(id))
+      .then((payload) => active && setReport(payload))
+      .catch((requestError) => active && setError(requestError.message))
+      .finally(() => active && setLoading(false));
+    return () => { active = false; };
+  }, [getReport, id]);
 
-  if (!report) {
+  if (loading) {
+    return <p className="text-sm text-slate-500">Loading report...</p>;
+  }
+
+  if (error || !report) {
     return (
       <div className="space-y-6">
         <Link to="/reports" className="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700">
@@ -23,7 +38,7 @@ export default function ReportDetails() {
         <EmptyState
           icon={FileText}
           title="Report not found"
-          description="The report you're looking for doesn't exist or hasn't been uploaded yet."
+          description={error || "The report you're looking for doesn't exist or hasn't been uploaded yet."}
         />
       </div>
     );
