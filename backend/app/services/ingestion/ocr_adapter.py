@@ -1,7 +1,7 @@
 import io
 
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageOps, ImageEnhance
 
 from app.core.errors import ExtractionEmptyError, OcrError
 
@@ -40,18 +40,32 @@ class OCRAdapter:
         except Exception:
             raise OcrError()
 
-        # Convert to RGB/RGBA so every input (incl. L/P modes) reaches OCR fine.
-        if image.mode not in ("RGB", "RGBA"):
-            image = image.convert("RGB")
-        array = np.asarray(image)
-
         try:
             engine = self._load_engine()
-            result, _ = engine(array)
         except OcrError:
             raise
         except Exception:
             raise OcrError()
+
+        # OCR quality varies across screenshots, scans, and compressed uploads.
+        # Try the original plus a small set of local, deterministic variants.
+        if image.mode not in ("RGB", "RGBA"):
+            image = image.convert("RGB")
+        variants = [image]
+        if max(image.size) < 1800:
+            variants.append(image.resize((image.width * 2, image.height * 2)))
+        grayscale = ImageOps.grayscale(image)
+        variants.append(ImageEnhance.Contrast(grayscale).enhance(1.8))
+
+        result = None
+        for variant in variants:
+            try:
+                candidate, _ = engine(np.asarray(variant))
+            except Exception:
+                continue
+            if candidate:
+                result = candidate
+                break
 
         if not result:
             raise ExtractionEmptyError()
