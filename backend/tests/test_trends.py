@@ -26,6 +26,7 @@ def test_trends_returns_numeric_values_grouped_by_normalized_name():
         user=user,
         original_filename="trend.pdf",
         mime_type="application/pdf",
+        content_hash="d" * 64,
         report_date=date(2026, 8, 12),
         raw_text="A1C 5.9 %",
         status=ReportStatus.PROCESSED,

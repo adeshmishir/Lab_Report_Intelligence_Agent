@@ -1,12 +1,13 @@
 from dataclasses import dataclass
 from datetime import date
+import hashlib
 from typing import Optional
 
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
 from app.core.errors import ExtractionEmptyError
-from app.core.errors import ProcessingFailedError
+from app.core.errors import ProcessingFailedError, DuplicateReportError
 from app.models.report import Report, LabResult, ReportStatus
 from app.schemas.extraction import ExtractionOutput
 from app.services.ingestion.file_validator import validate_file
@@ -37,6 +38,13 @@ class ExtractionService:
             data=data,
             max_size=self.settings.MAX_UPLOAD_SIZE,
         )
+        content_hash = hashlib.sha256(data).hexdigest()
+        existing = self.db.query(Report.id).filter(
+            Report.user_id == 1,
+            Report.content_hash == content_hash,
+        ).first()
+        if existing:
+            raise DuplicateReportError()
 
         # 2. Extract raw text from the PDF or image.
         document = self.text_extractor.extract_document(file)
@@ -56,6 +64,7 @@ class ExtractionService:
             user_id=1,
             original_filename=file.filename,
             mime_type=file.mime_type,
+            content_hash=content_hash,
             report_date=report_date,
             raw_text=raw_text,
             status=ReportStatus.PROCESSED,

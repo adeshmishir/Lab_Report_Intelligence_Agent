@@ -1,8 +1,10 @@
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from sqlalchemy import text
 
 from app.core.config import Settings, get_settings
+from app.core.database import SessionLocal
 from app.core.errors import LabLensError
 from app.api.routes.reports import router as reports_router
 from app.api.routes.ask import router as ask_router
@@ -48,7 +50,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.get("/health")
     def health_check():
-        return {"status": "ok"}
+        try:
+            with SessionLocal() as db:
+                db.execute(text("SELECT 1"))
+            return {"status": "ok", "database": "ok"}
+        except Exception:
+            return JSONResponse(status_code=503, content={"status": "error", "database": "unavailable"})
 
     app.include_router(reports_router)
     app.include_router(ask_router)

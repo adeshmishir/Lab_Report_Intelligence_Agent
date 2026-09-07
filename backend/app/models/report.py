@@ -43,6 +43,7 @@ class Report(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
     original_filename: Mapped[str] = mapped_column(String(255), nullable=False)
     mime_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
     report_date: Mapped[date | None] = mapped_column(Date, nullable=True)
     raw_text: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[ReportStatus] = mapped_column(

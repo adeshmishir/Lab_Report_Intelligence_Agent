@@ -61,3 +61,9 @@ class ProcessingFailedError(LabLensError):
     code = "PROCESSING_FAILED"
     status_code = 422
     message = "We couldn't process this report."
+
+
+class DuplicateReportError(LabLensError):
+    code = "DUPLICATE_REPORT"
+    status_code = 409
+    message = "This report has already been uploaded."

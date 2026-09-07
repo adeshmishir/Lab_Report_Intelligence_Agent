@@ -1,5 +1,6 @@
 import sys
 from pathlib import Path
+import pytest
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -10,6 +11,8 @@ sys.path.insert(0, str(Path(__file__).parents[1]))
 
 from app.core.database import Base
 from app.core.database import get_db
+from app.core.config import Settings
+from app.core.errors import DuplicateReportError
 from app.main import create_app
 from app.models import LabResult, Report, ReportStatus, User
 from app.schemas.extraction import ParserResult
@@ -17,6 +20,7 @@ from app.services.ingestion.lab_parser import DeterministicParser
 from app.services.ingestion.normalization import normalize_test_name, normalize_unit
 from app.services.ingestion.reference_ranges import parse_reference_range
 from app.services.ingestion.validators import finalize_results
+from app.services.extraction_service import ExtractionService
 
 
 def test_test_name_and_unit_normalization():
@@ -90,6 +94,7 @@ def test_report_user_result_relationship_and_delete_cascade():
         user=user,
         original_filename="sample.pdf",
         mime_type="application/pdf",
+        content_hash="a" * 64,
         raw_text="Glucose 95 mg/dL",
         status=ReportStatus.PROCESSED,
     )
@@ -128,6 +133,7 @@ def test_report_api_list_detail_results_filter_and_not_found():
         user=User(display_name="Demo User"),
         original_filename="panel.pdf",
         mime_type="application/pdf",
+        content_hash="b" * 64,
         raw_text="Glucose 95 mg/dL",
         status=ReportStatus.PROCESSED,
     )
@@ -173,3 +179,23 @@ def test_report_api_list_detail_results_filter_and_not_found():
     missing = client.get("/api/reports/999")
     assert missing.status_code == 404
     assert missing.json() == {"error": {"code": "REPORT_NOT_FOUND", "message": "We couldn't find that report."}}
+
+
+def test_duplicate_content_hash_is_rejected_before_processing():
+    engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
+    Base.metadata.create_all(engine)
+    session = sessionmaker(bind=engine)()
+    import hashlib
+
+    duplicate_data = (Path(__file__).parents[1] / "sample_reports" / "normal_report.pdf").read_bytes()
+    session.add(Report(
+        user_id=1,
+        original_filename="existing.pdf",
+        mime_type="application/pdf",
+        content_hash=hashlib.sha256(duplicate_data).hexdigest(),
+        raw_text="existing",
+        status=ReportStatus.PROCESSED,
+    ))
+    session.commit()
+    with pytest.raises(DuplicateReportError):
+        ExtractionService(Settings(), session).process_upload("copy.pdf", "application/pdf", duplicate_data)

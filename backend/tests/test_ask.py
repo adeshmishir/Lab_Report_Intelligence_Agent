@@ -29,6 +29,7 @@ def make_client():
         user=user,
         original_filename="panel.pdf",
         mime_type="application/pdf",
+        content_hash="c" * 64,
         report_date=date(2026, 8, 12),
         raw_text="HbA1c: 5.9 % (4.0 - 5.6)",
         status=ReportStatus.PROCESSED,
