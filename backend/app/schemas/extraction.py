@@ -23,6 +23,7 @@ class ParserResult(BaseModel):
 
 
 class ExtractionOutput(BaseModel):
+    patient_name: Optional[str] = None
     report_date: Optional[str] = None
     tests: list[ParserResult] = Field(default_factory=list)
 

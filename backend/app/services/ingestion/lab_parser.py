@@ -35,6 +35,18 @@ class DeterministicParser:
         pass
 
     @staticmethod
+    def _find_patient_name(lines: list[str]) -> str | None:
+        for index, line in enumerate(lines):
+            match = re.match(r"^(?:patient\s+)?(?:full\s+)?name\s*[:#-]\s*(.+?)\s*$", line, re.IGNORECASE)
+            if match:
+                return match.group(1).strip()
+            if re.fullmatch(r"patient(?:\s+name)?", line, re.IGNORECASE) and index + 1 < len(lines):
+                candidate = lines[index + 1].strip()
+                if candidate and not re.search(r"\d", candidate):
+                    return candidate
+        return None
+
+    @staticmethod
     def _find_date(lines: list[str]) -> str | None:
         preferred = {}
         pending_label = None
@@ -192,7 +204,11 @@ class DeterministicParser:
                     continue
             index += 1
 
-        return ExtractionOutput(report_date=self._find_date(lines), tests=results)
+        return ExtractionOutput(
+            patient_name=self._find_patient_name(lines),
+            report_date=self._find_date(lines),
+            tests=results,
+        )
 
 
 class LLMParser:

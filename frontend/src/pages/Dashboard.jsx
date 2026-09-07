@@ -12,7 +12,16 @@ function getGreeting() {
 }
 
 export default function Dashboard() {
-  const { reports, reportsLoading, error, refreshReports } = useApp();
+  const { reports, reportsLoading, error, refreshReports, refreshPatients, setSelectedPatientId } = useApp();
+
+  const handleUploaded = async (upload) => {
+    await refreshPatients();
+    if (upload?.patient_id) {
+      setSelectedPatientId(upload.patient_id);
+    } else {
+      await refreshReports();
+    }
+  };
 
   const attentionCount = reports.reduce((acc, report) => acc + report.attentionCount, 0);
 
@@ -63,7 +72,7 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         <div className="lg:col-span-2">
-          <UploadReport onUploaded={refreshReports} />
+          <UploadReport onUploaded={handleUploaded} />
         </div>
         <div className="lg:col-span-3">
           {reportsLoading ? <p className="text-sm text-slate-500">Loading reports...</p> : <RecentReports reports={reports} />}

@@ -30,6 +30,8 @@ class ReportSummary(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    patient_id: int = 1
+    patient_name: str = "Demo Patient"
     original_filename: str
     mime_type: str
     report_date: Optional[date] = None
@@ -43,6 +45,8 @@ class ReportDetail(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    patient_id: int = 1
+    patient_name: str = "Demo Patient"
     original_filename: str
     mime_type: str
     report_date: Optional[date] = None
@@ -55,6 +59,8 @@ class ReportDetail(BaseModel):
 
 class UploadResponse(BaseModel):
     report_id: int
+    patient_id: int
+    patient_name: str
     status: str
     report_date: Optional[date] = None
     tests_extracted: int = 0

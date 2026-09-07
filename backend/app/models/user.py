@@ -14,3 +14,4 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
 
     reports: Mapped[list["Report"]] = relationship(back_populates="user")
+    patients: Mapped[list["Patient"]] = relationship(back_populates="user")

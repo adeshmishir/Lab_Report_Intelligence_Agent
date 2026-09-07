@@ -34,15 +34,16 @@ class Evidence:
 
 
 class RetrievalService:
-    def __init__(self, db: Session, report_id: int | None = None):
+    def __init__(self, db: Session, patient_id: int = 1, report_id: int | None = None):
         self.db = db
+        self.patient_id = patient_id
         self.report_id = report_id
 
     def _all_results(self) -> list[Evidence]:
         stmt = (
             select(Report, LabResult)
             .join(LabResult, LabResult.report_id == Report.id)
-            .where(Report.user_id == DEMO_USER_ID, Report.status == ReportStatus.PROCESSED)
+            .where(Report.user_id == DEMO_USER_ID, Report.patient_id == self.patient_id, Report.status == ReportStatus.PROCESSED)
         )
         if self.report_id is not None:
             stmt = stmt.where(Report.id == self.report_id)
@@ -52,7 +53,7 @@ class RetrievalService:
         stmt = (
             select(LabResult.test_name_normalized)
             .join(Report, Report.id == LabResult.report_id)
-            .where(Report.user_id == DEMO_USER_ID, Report.status == ReportStatus.PROCESSED)
+            .where(Report.user_id == DEMO_USER_ID, Report.patient_id == self.patient_id, Report.status == ReportStatus.PROCESSED)
             .distinct()
         )
         if self.report_id is not None:
@@ -173,28 +174,29 @@ class AskService:
         except Exception:
             return deterministic_answer
 
-    def answer(self, question: str, report_id: int | None = None) -> AskResponse:
+    def answer(self, question: str, patient_id: int = 1, report_id: int | None = None) -> AskResponse:
         question = question.strip()
         if self._is_unsafe(question):
-            return AskResponse(answer=SAFETY_NOTICE, safety_notice=SAFETY_NOTICE, tool_name="safety_boundary", tool_arguments={"question": question})
-        retrieval = RetrievalService(self.db, report_id)
+            return AskResponse(answer=SAFETY_NOTICE, safety_notice=SAFETY_NOTICE, tool_name="safety_boundary", tool_arguments={"question": question}, patient_id=patient_id)
+        retrieval = RetrievalService(self.db, patient_id, report_id)
         if any(term in question.casefold() for term in ("out of range", "outside range", "abnormal")):
             evidence = retrieval.list_out_of_range_results()
             answer = "No results were found outside their reported reference ranges." if not evidence else "Results outside their reported reference ranges: " + ", ".join(f"{item.result.test_name_normalized} ({self._value(item)}{self._unit(item)})" for item in evidence) + "."
-            return AskResponse(answer=answer, citations=[item.citation() for item in evidence], tool_name="list_out_of_range_results", tool_arguments={}, evidence_result_ids=[item.result.id for item in evidence])
+            return AskResponse(answer=answer, citations=[item.citation() for item in evidence], tool_name="list_out_of_range_results", tool_arguments={"patient_id": patient_id}, evidence_result_ids=[item.result.id for item in evidence], patient_id=patient_id)
         test_name = retrieval.find_test_name(question)
         if not test_name:
             return AskResponse(
                 answer="I can answer questions about values, trends, and comparisons in your uploaded reports. Please include a test name such as HbA1c or Glucose.",
                 tool_name="no_matching_test",
                 tool_arguments={"question": question},
+                patient_id=patient_id,
             )
         results = retrieval.get_test_history(test_name)
         if not results:
-            return AskResponse(answer=f"I couldn't find a processed result for {test_name}.")
+            return AskResponse(answer=f"I couldn't find a processed result for {test_name}.", patient_id=patient_id)
         if self._is_critical(results):
             critical = "A critical result was found in the report. Please follow the report's stated safety instructions and contact a qualified healthcare professional promptly. LabLens cannot diagnose or recommend treatment."
-            return AskResponse(answer=critical, safety_notice=critical, tool_name="critical_value_safety", tool_arguments={"test_name": test_name}, citations=[item.citation() for item in results], evidence_result_ids=[item.result.id for item in results])
+            return AskResponse(answer=critical, safety_notice=critical, tool_name="critical_value_safety", tool_arguments={"patient_id": patient_id, "test_name": test_name}, citations=[item.citation() for item in results], evidence_result_ids=[item.result.id for item in results], patient_id=patient_id)
         latest = retrieval.get_latest_result(test_name)
         fallback, tool_name = self._deterministic_answer(question, test_name, results)
         return AskResponse(
@@ -203,4 +205,5 @@ class AskService:
             tool_name=tool_name,
             tool_arguments={"test_name": test_name},
             evidence_result_ids=[item.result.id for item in results],
+            patient_id=patient_id,
         )

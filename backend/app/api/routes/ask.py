@@ -16,4 +16,4 @@ def ask_lab_lens(
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings),
 ):
-    return AskService(settings, db).answer(request.question, request.report_id)
+    return AskService(settings, db).answer(request.question, request.patient_id or 1, request.report_id)

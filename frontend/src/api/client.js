@@ -7,18 +7,26 @@ async function request(path, options) {
   return payload;
 }
 
-export function listReports() {
-  return request("/api/reports");
+export function listPatients() {
+  return request("/api/patients");
 }
 
-export function getReport(reportId) {
-  return request(`/api/reports/${reportId}`);
+export function createPatient(name) {
+  return request("/api/patients", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name }) });
+}
+
+export function listReports(patientId) {
+  return request(`/api/reports?patient_id=${patientId}`);
+}
+
+export function getReport(reportId, patientId) {
+  return request(`/api/reports/${reportId}?patient_id=${patientId}`);
 }
 
 export function uploadReport(file) {
   const formData = new FormData();
   formData.append("file", file);
-  return request("/api/reports/upload", { method: "POST", body: formData });
+  return request(`/api/reports/upload?patient_id=${patientId}`, { method: "POST", body: formData });
 }
 
 export function normalizeReport(report) {
@@ -34,13 +42,13 @@ export function normalizeReport(report) {
   };
 }
 
-export function getTrends() {
-  return request("/api/trends");
+export function getTrends(patientId) {
+  return request(`/api/trends?patient_id=${patientId}`);
 }
 
-export function correctResult(reportId, resultId, value, reason) {
+export function correctResult(reportId, resultId, value, reason, patientId) {
   const numeric = Number(value);
-  return request(`/api/reports/${reportId}/results/${resultId}`, {
+  return request(`/api/reports/${reportId}/results/${resultId}?patient_id=${patientId}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ value_numeric: Number.isNaN(numeric) ? null : numeric, value_text: Number.isNaN(numeric) ? value : null, reason }),

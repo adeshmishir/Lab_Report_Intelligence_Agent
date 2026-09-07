@@ -10,6 +10,7 @@ from app.api.routes.reports import router as reports_router
 from app.api.routes.ask import router as ask_router
 from app.api.routes.trends import router as trends_router
 from app.api.routes.corrections import router as corrections_router
+from app.api.routes.patients import router as patients_router
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -62,6 +63,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(ask_router)
     app.include_router(trends_router)
     app.include_router(corrections_router)
+    app.include_router(patients_router)
 
     return app
 

@@ -2,22 +2,24 @@ import { useEffect, useState } from "react";
 import { getTrends } from "../api/client";
 import { TrendChart } from "../components/trends/TrendChart";
 import { TrendSummary } from "../components/trends/TrendSummary";
+import { useApp } from "../context/AppContext";
 
 export default function Trends() {
+  const { selectedPatientId } = useApp();
   const [trendData, setTrendData] = useState({});
   const [selectedTest, setSelectedTest] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    getTrends()
+    getTrends(selectedPatientId)
       .then((payload) => {
         setTrendData(payload.data || {});
         setSelectedTest((current) => current || payload.tests?.[0] || "");
       })
       .catch((requestError) => setError(requestError.message))
       .finally(() => setLoading(false));
-  }, []);
+  }, [selectedPatientId]);
 
   const data = trendData[selectedTest] || [];
 

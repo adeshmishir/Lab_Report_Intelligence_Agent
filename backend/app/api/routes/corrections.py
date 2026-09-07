@@ -1,11 +1,11 @@
 from datetime import datetime
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.core.errors import NotFoundError, InvalidCorrectionError
-from app.models.report import LabResult
+from app.models.report import LabResult, Report
 from app.schemas.report import CorrectionRequest, LabResultOut
 
 
@@ -13,8 +13,8 @@ router = APIRouter(prefix="/api/reports", tags=["corrections"])
 
 
 @router.patch("/{report_id}/results/{result_id}", response_model=LabResultOut)
-def correct_result(report_id: int, result_id: int, request: CorrectionRequest, db: Session = Depends(get_db)):
-    result = db.query(LabResult).filter(LabResult.id == result_id, LabResult.report_id == report_id).first()
+def correct_result(report_id: int, result_id: int, request: CorrectionRequest, patient_id: int = Query(default=1, gt=0), db: Session = Depends(get_db)):
+    result = db.query(LabResult).join(Report).filter(LabResult.id == result_id, LabResult.report_id == report_id, Report.patient_id == patient_id, Report.user_id == 1).first()
     if result is None:
         raise NotFoundError()
     if request.value_numeric is None and not (request.value_text or "").strip():

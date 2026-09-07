@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 
 class AskRequest(BaseModel):
     question: str = Field(min_length=1, max_length=1000)
+    patient_id: int | None = Field(default=1, gt=0)
     report_id: int | None = Field(default=None, gt=0)
 
 
@@ -24,3 +25,4 @@ class AskResponse(BaseModel):
     tool_name: str | None = None
     tool_arguments: dict[str, str | int | None] = Field(default_factory=dict)
     evidence_result_ids: list[int] = Field(default_factory=list)
+    patient_id: int | None = None

@@ -14,12 +14,13 @@ router = APIRouter(prefix="/api/trends", tags=["trends"])
 @router.get("")
 def get_trends(
     test_name: str | None = Query(default=None),
+    patient_id: int = Query(default=1, gt=0),
     db: Session = Depends(get_db),
 ):
     stmt = (
         select(Report, LabResult)
         .join(LabResult, LabResult.report_id == Report.id)
-        .where(Report.user_id == 1, Report.status == ReportStatus.PROCESSED)
+        .where(Report.user_id == 1, Report.patient_id == patient_id, Report.status == ReportStatus.PROCESSED)
         .order_by(Report.report_date.asc(), Report.id.asc(), LabResult.id.asc())
     )
     if test_name:

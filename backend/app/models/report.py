@@ -42,6 +42,7 @@ class Report(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False, index=True)
+    patient_id: Mapped[int] = mapped_column(ForeignKey("patients.id"), nullable=False, index=True)
     original_filename: Mapped[str] = mapped_column(String(255), nullable=False)
     mime_type: Mapped[str] = mapped_column(String(64), nullable=False)
     content_hash: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
@@ -54,6 +55,7 @@ class Report(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
     user: Mapped["User"] = relationship(back_populates="reports")
+    patient: Mapped["Patient"] = relationship(back_populates="reports")
 
     results: Mapped[list["LabResult"]] = relationship(
         back_populates="report", cascade="all, delete-orphan", order_by="LabResult.id"

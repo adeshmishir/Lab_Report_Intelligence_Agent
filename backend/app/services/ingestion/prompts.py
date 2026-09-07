@@ -25,6 +25,7 @@ SAFETY:
 
 Return a JSON object with this exact schema:
 {
+  "patient_name": "patient name exactly as written" or null,
   "report_date": "YYYY-MM-DD" or null,
   "tests": [
     {

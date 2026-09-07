@@ -10,6 +10,7 @@ export function UploadReport({ onUploaded }) {
   const [dragOver, setDragOver] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
   const [errorMessage, setErrorMessage] = useState("");
+  const [patientName, setPatientName] = useState("");
 
   const handleFile = useCallback((file) => {
     if (!file) return;
@@ -46,11 +47,12 @@ export function UploadReport({ onUploaded }) {
   const handleUpload = useCallback(async () => {
     setState("uploading");
     try {
-      await fetch("/api/reports/upload", {
+      const response = await fetch("/api/reports/upload", {
         method: "POST",
         body: (() => {
           const data = new FormData();
           data.append("file", selectedFile);
+          if (patientName.trim()) data.append("patient_name", patientName.trim());
           return data;
         })(),
       }).then(async (response) => {
@@ -59,22 +61,24 @@ export function UploadReport({ onUploaded }) {
         return payload;
       });
       setState("success");
-      onUploaded?.();
+      onUploaded?.(response);
       window.setTimeout(() => {
         setState("idle");
         setSelectedFile(null);
+        setPatientName("");
       }, 3000);
     } catch (error) {
-      setState("error");
       setErrorMessage(error.message);
-      setSelectedFile(null);
+      setState(error.message.includes("does not contain a patient name") ? "needs-name" : "error");
+      if (!error.message.includes("does not contain a patient name")) setSelectedFile(null);
     }
-  }, [onUploaded, selectedFile]);
+  }, [onUploaded, patientName, selectedFile]);
 
   const handleReset = useCallback(() => {
     setState("idle");
     setSelectedFile(null);
     setErrorMessage("");
+    setPatientName("");
   }, []);
 
   return (
@@ -116,6 +120,23 @@ export function UploadReport({ onUploaded }) {
               <button onClick={handleReset} className="mt-3 text-xs text-red-600 underline hover:text-red-700">
                 Try again
               </button>
+            </>
+          ) : state === "needs-name" && selectedFile ? (
+            <>
+              <AlertCircle className="h-8 w-8 text-amber-400 mb-2" />
+              <p className="text-sm font-medium text-slate-800">Patient name not found</p>
+              <p className="mt-1 text-center text-xs text-slate-500">Enter the name to file this report correctly.</p>
+              <input
+                autoFocus
+                value={patientName}
+                onChange={(event) => setPatientName(event.target.value)}
+                placeholder="Patient name"
+                className="mt-3 w-full max-w-xs rounded-md border border-slate-200 px-3 py-2 text-sm"
+              />
+              <div className="mt-3 flex gap-2">
+                <Button size="sm" onClick={handleUpload} disabled={!patientName.trim()}>Upload report</Button>
+                <Button size="sm" variant="ghost" onClick={handleReset}>Cancel</Button>
+              </div>
             </>
           ) : state === "uploading" ? (
             <>

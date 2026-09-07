@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from datetime import date
 import hashlib
+import re
 from typing import Optional
 
 from sqlalchemy.orm import Session
@@ -9,6 +10,7 @@ from app.core.config import Settings
 from app.core.errors import ExtractionEmptyError
 from app.core.errors import ProcessingFailedError, DuplicateReportError
 from app.models.report import Report, LabResult, ReportStatus
+from app.models.patient import Patient
 from app.schemas.extraction import ExtractionOutput
 from app.services.ingestion.file_validator import validate_file
 from app.services.ingestion.text_extractor import TextExtractor
@@ -30,7 +32,13 @@ class ExtractionService:
         self.db = db
         self.text_extractor = TextExtractor(ocr_backend=settings.OCR_BACKEND)
 
-    def process_upload(self, filename: str, content_type: str, data: bytes) -> ProcessedReport:
+    def process_upload(
+        self,
+        filename: str,
+        content_type: str,
+        data: bytes,
+        patient_name: str | None = None,
+    ) -> ProcessedReport:
         # 1. Validate the file (size, type, emptiness).
         file = validate_file(
             filename=filename,
@@ -39,12 +47,6 @@ class ExtractionService:
             max_size=self.settings.MAX_UPLOAD_SIZE,
         )
         content_hash = hashlib.sha256(data).hexdigest()
-        existing = self.db.query(Report.id).filter(
-            Report.user_id == 1,
-            Report.content_hash == content_hash,
-        ).first()
-        if existing:
-            raise DuplicateReportError()
 
         # 2. Extract raw text from the PDF or image.
         document = self.text_extractor.extract_document(file)
@@ -55,6 +57,32 @@ class ExtractionService:
         # 3. Parse the raw text into structured candidate fields.
         extraction: ExtractionOutput = parse_raw_text(raw_text, self.settings)
 
+        resolved_patient_name = extraction.patient_name or patient_name or self._fallback_patient_name(raw_text)
+        if not resolved_patient_name:
+            raise ProcessingFailedError("The report does not contain a patient name.")
+        normalized_name = re.sub(r"\s+", " ", resolved_patient_name.strip()).casefold()
+        patient = self.db.query(Patient).filter(
+            Patient.user_id == 1,
+            Patient.normalized_name == normalized_name,
+        ).first()
+        if patient is None:
+            patient = Patient(
+                user_id=1,
+                name=resolved_patient_name.strip(),
+                normalized_name=normalized_name,
+            )
+            self.db.add(patient)
+            self.db.flush()
+        patient_id = patient.id
+
+        existing = self.db.query(Report.id).filter(
+            Report.user_id == 1,
+            Report.patient_id == patient_id,
+            Report.content_hash == content_hash,
+        ).first()
+        if existing:
+            raise DuplicateReportError()
+
         # 4. Validate + normalize + quality-tag the structured data.
         results = finalize_results(extraction.tests)
         report_date = parse_report_date(extraction.report_date)
@@ -62,6 +90,7 @@ class ExtractionService:
         # 5. Persist the report and its results.
         report = Report(
             user_id=1,
+            patient_id=patient_id,
             original_filename=file.filename,
             mime_type=file.mime_type,
             content_hash=content_hash,
@@ -103,3 +132,11 @@ class ExtractionService:
             tests_extracted=len(results),
             raw_text=raw_text,
         )
+
+    @staticmethod
+    def _fallback_patient_name(raw_text: str) -> str | None:
+        for line in raw_text.splitlines():
+            match = re.match(r"^(?:patient\s+)?(?:full\s+)?name\s*[:#-]\s*(.+?)\s*$", line.strip(), re.IGNORECASE)
+            if match:
+                return match.group(1).strip()
+        return None
