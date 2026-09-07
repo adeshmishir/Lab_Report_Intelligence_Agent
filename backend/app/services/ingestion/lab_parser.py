@@ -37,7 +37,7 @@ class DeterministicParser:
     @staticmethod
     def _find_date(lines: list[str]) -> str | None:
         preferred = {}
-        any_candidates = []
+        pending_label = None
 
         for line in lines:
             low = line.lower()
@@ -47,13 +47,16 @@ class DeterministicParser:
                 flags=re.IGNORECASE,
             )
             if not dates:
+                if low in ("report date", "collection date", "generated date", "print date"):
+                    pending_label = low
                 continue
-            if "report date" in low or ("date:" in low and "report" in low):
+            if pending_label == "report date" or "report date" in low or ("date:" in low and "report" in low):
                 preferred.setdefault("report", parse_date(dates[0]))
-            elif "collection date" in low or "collection" in low or "collected" in low:
+            elif pending_label == "collection date" or "collection date" in low or "collection" in low or "collected" in low:
                 preferred.setdefault("collection", parse_date(dates[0]))
-            elif "generated" in low or "print date" in low:
+            elif pending_label in ("generated date", "print date") or "generated" in low or "print date" in low:
                 preferred.setdefault("generated", parse_date(dates[0]))
+            pending_label = None
 
         for key in ("report", "collection", "generated"):
             if preferred.get(key):
@@ -149,12 +152,42 @@ class DeterministicParser:
     def parse(self, raw_text: str) -> ExtractionOutput:
         lines = [l.strip() for l in raw_text.splitlines()]
         results = []
-        for line in lines:
+        index = 0
+        while index < len(lines):
+            line = lines[index]
             if not line:
+                index += 1
                 continue
             parsed = self._parse_lab_line(line)
             if parsed:
                 results.append(parsed)
+                index += 1
+                continue
+
+            # Many exported lab PDFs place each table cell on its own line:
+            # name, value, unit, reference range.
+            if index + 3 < len(lines):
+                value_line = lines[index + 1]
+                unit_line = lines[index + 2]
+                reference_line = lines[index + 3]
+                if (
+                    re.fullmatch(r"[-+]?\d+(?:[.,]\d+)?", value_line)
+                    and re.search(r"\d", reference_line)
+                    and not reference_line.lower().startswith(("test", "result", "unit", "reference"))
+                ):
+                    reference = parse_reference_range(reference_line)
+                    results.append(ParserResult(
+                        test_name_original=line,
+                        value_numeric=float(value_line.replace(",", ".")),
+                        unit=unit_line or None,
+                        reference_range=reference,
+                        raw_text="\n".join(lines[index:index + 4]),
+                        confidence="medium",
+                        data_quality="good",
+                    ))
+                    index += 4
+                    continue
+            index += 1
 
         return ExtractionOutput(report_date=self._find_date(lines), tests=results)
 
