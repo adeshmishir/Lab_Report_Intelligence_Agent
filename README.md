@@ -112,3 +112,27 @@ npm run build
 
 The schema includes one seeded demo user for the `User -> Report -> LabResult`
 relationship. No authentication is required in this phase.
+
+## Phase 4 architecture
+
+```text
+Question
+	↓
+Safety and intent checks
+	↓
+Deterministic retrieval tools
+	↓
+Report/result evidence
+	↓
+Optional grounded LLM composition
+	↓
+Answer with citations
+```
+
+Phase 4 adds `POST /api/ask`. It supports latest-result, trend, and comparison
+questions, optionally scoped with `report_id`. The service retrieves only
+processed results belonging to the demo user, preserves incomplete/conflicting
+quality states, and returns report/result citations. Without `LLM_API_KEY`, a
+deterministic answer is returned; with a key, the LLM may compose from the
+retrieved evidence only. Diagnosis, treatment, prescription, and prompt-injection
+requests receive a safety response instead of an unsupported answer.

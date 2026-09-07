@@ -6,15 +6,34 @@ import { SuggestedQuestion } from "../components/chat/SuggestedQuestion";
 
 export default function AskLabLens() {
   const { chatMessages, addChatMessage } = useApp();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  const handleSend = (question) => {
+  const handleSend = async (question) => {
+    setError(null);
     addChatMessage({ role: "user", content: question });
-    setTimeout(() => {
+    setLoading(true);
+    try {
+      const response = await fetch("/api/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question }),
+      });
+      const payload = await response.json();
+      if (!response.ok) {
+        throw new Error(payload?.error?.message || "LabLens could not answer that question.");
+      }
       addChatMessage({
         role: "assistant",
-        content: "LabLens will answer this using your uploaded report data.",
+        content: payload.answer,
+        citations: payload.citations,
+        safetyNotice: payload.safety_notice,
       });
-    }, 500);
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -36,7 +55,8 @@ export default function AskLabLens() {
       <div className={`flex flex-col ${chatMessages.length === 0 ? "" : "flex-1 min-h-0"}`}>
         {chatMessages.length > 0 && <ChatWindow messages={chatMessages} />}
         <div className="mt-auto pt-4">
-          <ChatInput onSend={handleSend} />
+          {error && <p className="mb-3 text-sm text-red-600">{error}</p>}
+          <ChatInput onSend={handleSend} disabled={loading} />
         </div>
       </div>
     </div>
