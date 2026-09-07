@@ -1,3 +1,6 @@
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+
 export function ChatMessage({ message }) {
   const isUser = message.role === "user";
 
@@ -10,7 +13,13 @@ export function ChatMessage({ message }) {
             : "bg-slate-100 text-slate-700 rounded-bl-md"
         }`}
       >
-        {message.content}
+        {isUser ? (
+          message.content
+        ) : (
+          <div className="chat-markdown">
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{message.content}</ReactMarkdown>
+          </div>
+        )}
         {message.safetyNotice && (
           <p className="mt-2 text-xs text-slate-500">{message.safetyNotice}</p>
         )}
