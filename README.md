@@ -20,7 +20,7 @@ stored report evidence.
 - Manual patient-name fallback when a scan does not contain a readable patient name.
 - Test-name and unit normalization while preserving original text.
 - Numeric and qualitative values, reference ranges, confidence, and data quality.
-- Duplicate/conflicting result preservation and duplicate-upload protection.
+- Duplicate/conflicting result preservation and repeat-upload support.
 - Inline result correction with original value and correction note retained.
 - Deterministic retrieval tools for latest values, history, and out-of-range results.
 - Grounded Q&A with evidence citations and auditable tool metadata.

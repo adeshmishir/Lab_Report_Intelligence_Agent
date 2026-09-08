@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import Settings
 from app.core.errors import ExtractionEmptyError
-from app.core.errors import ProcessingFailedError, DuplicateReportError
+from app.core.errors import ProcessingFailedError
 from app.models.report import Report, LabResult, ReportStatus
 from app.models.patient import Patient
 from app.schemas.extraction import ExtractionOutput
@@ -74,14 +74,6 @@ class ExtractionService:
             self.db.add(patient)
             self.db.flush()
         patient_id = patient.id
-
-        existing = self.db.query(Report.id).filter(
-            Report.user_id == 1,
-            Report.patient_id == patient_id,
-            Report.content_hash == content_hash,
-        ).first()
-        if existing:
-            raise DuplicateReportError()
 
         # 4. Validate + normalize + quality-tag the structured data.
         results = finalize_results(extraction.tests)

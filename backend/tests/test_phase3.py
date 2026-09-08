@@ -12,9 +12,8 @@ sys.path.insert(0, str(Path(__file__).parents[1]))
 from app.core.database import Base
 from app.core.database import get_db
 from app.core.config import Settings
-from app.core.errors import DuplicateReportError
 from app.main import create_app
-from app.models import LabResult, Report, ReportStatus, User
+from app.models import LabResult, Patient, Report, ReportStatus, User
 from app.schemas.extraction import ParserResult
 from app.services.ingestion.lab_parser import DeterministicParser
 from app.services.ingestion.normalization import normalize_test_name, normalize_unit
@@ -186,21 +185,20 @@ def test_report_api_list_detail_results_filter_and_not_found():
     assert corrected.json()["correction_note"] == "Checked against source document"
 
 
-def test_duplicate_content_hash_is_rejected_before_processing():
+def test_duplicate_content_hash_can_be_uploaded_as_a_new_report():
     engine = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
     Base.metadata.create_all(engine)
     session = sessionmaker(bind=engine)()
-    import hashlib
-
     duplicate_data = (Path(__file__).parents[1] / "sample_reports" / "normal_report.pdf").read_bytes()
-    session.add(Report(
-        user_id=1,
-        original_filename="existing.pdf",
-        mime_type="application/pdf",
-        content_hash=hashlib.sha256(duplicate_data).hexdigest(),
-        raw_text="existing",
-        status=ReportStatus.PROCESSED,
-    ))
+    patient = Patient(user=User(display_name="Demo User"), name="Alex Morgan", normalized_name="alex morgan")
+    session.add(patient)
     session.commit()
-    with pytest.raises(DuplicateReportError):
-        ExtractionService(Settings(), session).process_upload("copy.pdf", "application/pdf", duplicate_data)
+
+    service = ExtractionService(Settings(), session)
+    first = service.process_upload("copy.pdf", "application/pdf", duplicate_data, patient_name="Alex Morgan")
+    second = service.process_upload("copy-again.pdf", "application/pdf", duplicate_data, patient_name="Alex Morgan")
+
+    assert first.report_id != second.report_id
+    reports = session.query(Report).all()
+    assert len(reports) == 2
+    assert reports[0].content_hash == reports[1].content_hash

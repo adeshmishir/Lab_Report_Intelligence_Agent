@@ -12,12 +12,12 @@ function getGreeting() {
 }
 
 export default function Dashboard() {
-  const { reports, reportsLoading, error, refreshReports, refreshPatients, setSelectedPatientId } = useApp();
+  const { reports, reportsLoading, error, refreshReports, refreshPatients, refreshReportsForPatient } = useApp();
 
   const handleUploaded = async (upload) => {
     await refreshPatients();
     if (upload?.patient_id) {
-      setSelectedPatientId(upload.patient_id);
+      await refreshReportsForPatient(upload.patient_id);
     } else {
       await refreshReports();
     }

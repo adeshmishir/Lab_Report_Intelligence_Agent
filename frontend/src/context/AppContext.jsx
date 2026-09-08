@@ -33,6 +33,20 @@ export function AppProvider({ children }) {
     }
   }, [selectedPatientId]);
 
+  const refreshReportsForPatient = useCallback(async (patientId) => {
+    setReportsLoading(true);
+    try {
+      const payload = await listReports(patientId);
+      setReports(payload.map(normalizeReport));
+      setSelectedPatientId(patientId);
+      setError(null);
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setReportsLoading(false);
+    }
+  }, []);
+
   const fetchReport = useCallback(async (reportId) => normalizeReport(await getReport(reportId, selectedPatientId)), [selectedPatientId]);
 
   useEffect(() => {
@@ -67,6 +81,7 @@ export function AppProvider({ children }) {
     reportsLoading,
     error,
     refreshReports,
+    refreshReportsForPatient,
     uploadReport,
     correctResult,
     getReport: fetchReport,

@@ -57,11 +57,17 @@ export function UploadReport({ onUploaded }) {
         })(),
       }).then(async (response) => {
         const payload = await response.json().catch(() => ({}));
-        if (!response.ok) throw new Error(payload?.error?.message || "Upload failed.");
+        if (!response.ok) {
+          const error = new Error(payload?.error?.message || "Upload failed.");
+          error.status = response.status;
+          error.code = payload?.error?.code;
+          throw error;
+        }
         return payload;
       });
+      setState("syncing");
+      await onUploaded?.(response);
       setState("success");
-      onUploaded?.(response);
       window.setTimeout(() => {
         setState("idle");
         setSelectedFile(null);
@@ -69,8 +75,14 @@ export function UploadReport({ onUploaded }) {
       }, 3000);
     } catch (error) {
       setErrorMessage(error.message);
-      setState(error.message.includes("does not contain a patient name") ? "needs-name" : "error");
-      if (!error.message.includes("does not contain a patient name")) setSelectedFile(null);
+      if (error.code === "DUPLICATE_REPORT" || error.status === 409) {
+        setState("duplicate");
+      } else if (error.message.includes("does not contain a patient name")) {
+        setState("needs-name");
+      } else {
+        setState("error");
+        setSelectedFile(null);
+      }
     }
   }, [onUploaded, patientName, selectedFile]);
 
@@ -112,6 +124,15 @@ export function UploadReport({ onUploaded }) {
               <CheckCircle className="h-8 w-8 text-emerald-500 mb-2" />
               <p className="text-sm font-medium text-emerald-700">Report uploaded successfully</p>
             </>
+          ) : state === "duplicate" ? (
+            <>
+              <AlertCircle className="h-8 w-8 text-amber-400 mb-2" />
+              <p className="text-sm font-medium text-amber-700">Report already uploaded</p>
+              <p className="mt-1 text-center text-xs text-amber-600">This exact file is already stored for this patient.</p>
+              <button onClick={handleReset} className="mt-3 text-xs text-slate-600 underline hover:text-slate-800">
+                Choose another report
+              </button>
+            </>
           ) : state === "error" ? (
             <>
               <AlertCircle className="h-8 w-8 text-red-400 mb-2" />
@@ -138,10 +159,12 @@ export function UploadReport({ onUploaded }) {
                 <Button size="sm" variant="ghost" onClick={handleReset}>Cancel</Button>
               </div>
             </>
-          ) : state === "uploading" ? (
+          ) : state === "uploading" || state === "syncing" ? (
             <>
               <div className="h-8 w-8 rounded-full border-2 border-slate-300 border-t-slate-600 animate-spin mb-2" />
-              <p className="text-sm text-slate-500">Uploading...</p>
+              <p className="text-sm text-slate-500">
+                {state === "syncing" ? "Updating patient reports..." : "Uploading..."}
+              </p>
             </>
           ) : state === "selected" && selectedFile ? (
             <>
